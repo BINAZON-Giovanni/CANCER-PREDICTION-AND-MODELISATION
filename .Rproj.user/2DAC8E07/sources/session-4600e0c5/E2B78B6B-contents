@@ -1,0 +1,417 @@
+#############################################################################################################################
+#############################################################################################################################
+
+# PROJET DE MODELISATION STATISTIQUE DE DONNEES COMPLEXES
+
+#############################################################################################################################
+#############################################################################################################################
+
+
+
+
+
+######################################### Installation et importation des librairies  #######################################################
+
+install.packages("labelled")
+
+install.packages("rpart")
+
+install.packages("rattle")
+
+install.packages("pROc")
+
+install.packages("adabag")
+
+install.packages("ada")
+
+install.packages("factoextra")
+
+library(ada)       
+library(adabag)
+
+library(pROC)        
+library(rattle)
+
+library(rpart)            
+library(labelled)
+
+library(dplyr)            
+library(ggplot2)
+
+library(tidyverse)
+library(FactoMineR)
+
+library(factoextra)
+library(gt)
+
+######################################### Phase d'importation dataset et labellisation  #######################################################
+
+cohorte = readRDS("CohorteB")
+
+colnames(cohorte)
+
+str(cohorte)
+
+cohorte$cible <- as.factor(cohorte$cible)
+
+
+var_label(cohorte$RIBov) <- "Ratio de Pratique de Bovin"
+var_label(cohorte$RIMou) <- "Ratio de Pratique de Moutons/Chèvre"
+var_label(cohorte$RICoc) <- "Ratio de Pratique de Cochon"
+var_label(cohorte$RIChe) <- "Ratio de Pratique de Chevaux"
+var_label(cohorte$RIVol) <- "Ratio de Pratique de Volaille"
+var_label(cohorte$RIPrai) <- "Ratio de Pratique de Prairies"
+var_label(cohorte$RIVigne) <- "Ratio de Pratique de Vigne"
+var_label(cohorte$RIMais) <- "Ratio de Pratique de Mais"
+var_label(cohorte$RIBle) <- "Ratio de Pratique de Blé"
+var_label(cohorte$RIPois) <- "Ratio de Pratique de Pois Fourragers/"
+var_label(cohorte$RIBet) <- "Ratio de Pratique de Betteraves sucrières"
+var_label(cohorte$RITou) <- "Ratio de Pratique de Tournesol"
+var_label(cohorte$RICol) <- "Ratio de Pratique de Colza"
+var_label(cohorte$RITabac) <- "Ratio de Pratique de Tabac"
+var_label(cohorte$RIArb) <- "Ratio de Pratique de Arboriculture"
+var_label(cohorte$RIPdt) <- "Ratio de Pratique de Pomme de Terre"
+var_label(cohorte$RILegChamp) <- "Ratio de Pratique des autres cultures légumières en plein champs"
+var_label(cohorte$RISerres) <- "Ratio de Pratique de la  cultures sous serres"
+var_label(cohorte$cible) <- "Pésence ou Non de la maladie"
+
+
+
+######################################### phase de nettoyage des données  #######################################################
+
+summary(cohorte)
+
+
+varUniQuanti <- function(variable, 
+                         titreGraph = "Densité", 
+                         titreX = "Variable",
+                         show_hist = TRUE, 
+                         show_mean = TRUE, 
+                         show_median = TRUE,
+                         col_fill = "#4C72B0", 
+                         col_line = "#2A4E6E") {
+  
+  dens <- density(variable, na.rm = TRUE)
+  
+
+  if (show_hist) {
+    hist(variable,
+         freq = FALSE,
+         col = adjustcolor(col_fill, alpha.f = 0.3),
+         border = "white",
+         main = titreGraph,
+         xlab = titreX)
+    lines(dens, lwd = 2, col = col_line)
+  } else {
+    plot(dens,
+         main = titreGraph,
+         xlab = titreX,
+         lwd = 2,
+         col = col_line)
+  }
+  
+
+  if (show_mean) {
+    abline(v = mean(variable, na.rm = TRUE),
+           col = "#D55E00", lwd = 2, lty = 2)
+  }
+  
+
+  if (show_median) {
+    abline(v = median(variable, na.rm = TRUE),
+           col = "#009E73", lwd = 2, lty = 3)
+  }
+  
+
+  legend("topright",
+         legend = c("Moyenne", "Médiane"),
+         col = c("#D55E00", "#009E73"),
+         lty = c(2, 3),
+         lwd = 2,
+         bty = "n")
+  
+  q <- quantile(variable, probs = seq(0, 1, by = 0.01), na.rm = TRUE)
+  return(q)
+}
+
+
+
+
+# Nettoyage Ratio Bovin
+varUniQuanti(cohorte$RIBov,
+             "Courbe de densité et quantiles du ratio de la pratique de l'élevage de Bovin",
+             "Variable Ratio Bovin")
+donnees_aberrantes_RIBov <- cohorte[cohorte$RIBov > 1, ]
+
+
+
+# Nettoyage Ratio Mouton
+varUniQuanti(cohorte$RIMou,
+             "Courbe de densité et quantiles du ratio de la pratique de l'élevage de Mouton",
+             "Variable Ratio Mouton")
+donnees_aberrantes_RIMou <- cohorte[cohorte$RIMou > 1, ]
+
+
+
+# Nettoyage Ratio Cochon
+varUniQuanti(cohorte$RICoc,
+             "Courbe de densité et quantiles du ratio de la pratique de l'élevage de Cochon",
+             "Variable Ratio Cochon")
+donnees_aberrantes_RICoc <- cohorte[cohorte$RICoc > 1, ]
+
+
+
+# Nettoyage Ratio Cheval
+varUniQuanti(cohorte$RIChe,
+             "Courbe de densité et quantiles du ratio de la pratique de l'élevage de Chevaux",
+             "Variable Ratio Chevaux")
+donnees_aberrantes_RIChe <- cohorte[cohorte$RIChe > 1, ]
+
+
+
+# Nettoyage Ratio Volaille
+varUniQuanti(cohorte$RIVol,
+             "Courbe de densité et quantiles du ratio de la pratique de l'élevage de Volaille",
+             "Variable Ratio Volaille")
+donnees_aberrantes_RIVol <- cohorte[cohorte$RIVol > 1, ]
+
+
+
+# Nettoyage Ratio Prairie
+varUniQuanti(cohorte$RIPrai,
+             "Courbe de densité et quantiles du ratio de la pratique de la Prairie",
+             "Variable Ratio Prairie")
+donnees_aberrantes_RIPrai <- cohorte[cohorte$RIPrai > 1, ]
+
+
+
+# Nettoyage Ratio Vigne
+varUniQuanti(cohorte$RIVigne,
+             "Courbe de densité et quantiles du ratio de la pratique de la Vigne",
+             "Variable Ratio Vigne")
+donnees_aberrantes_RIVigne <- cohorte[cohorte$RIVigne > 1, ]
+
+
+
+# Nettoyage Ratio Maïs
+varUniQuanti(cohorte$RIMais,
+             "Courbe de densité et quantiles du ratio de la pratique du Maïs",
+             "Variable Ratio Maïs")
+donnees_aberrantes_RIMais <- cohorte[cohorte$RIMais > 1, ]
+
+
+
+# Nettoyage Ratio Blé
+varUniQuanti(cohorte$RIBle,
+             "Courbe de densité et quantiles du ratio de la pratique du Blé",
+             "Variable Ratio Blé")
+donnees_aberrantes_RIBle <- cohorte[cohorte$RIBle > 1, ]
+
+
+
+# Nettoyage Ratio Pois
+varUniQuanti(cohorte$RIPois,
+             "Courbe de densité et quantiles du ratio de la pratique du Pois",
+             "Variable Ratio Pois")
+donnees_aberrantes_RIPois <- cohorte[cohorte$RIPois > 1, ]
+
+
+
+# Nettoyage Ratio Betterave
+varUniQuanti(cohorte$RIBet,
+             "Courbe de densité et quantiles du ratio de la pratique de la Betterave",
+             "Variable Ratio Betterave")
+donnees_aberrantes_RIBet <- cohorte[cohorte$RIBet > 1, ]
+
+
+
+# Nettoyage Ratio Tournesol
+varUniQuanti(cohorte$RITou,
+             "Courbe de densité et quantiles du ratio de la pratique du Tournesol",
+             "Variable Ratio Tournesol")
+donnees_aberrantes_RITou <- cohorte[cohorte$RITou > 1, ]
+
+
+
+# Nettoyage Ratio Colza
+varUniQuanti(cohorte$RICol,
+             "Courbe de densité et quantiles du ratio de la pratique du Colza",
+             "Variable Ratio Colza")
+donnees_aberrantes_RICol <- cohorte[cohorte$RICol > 1, ]
+
+
+
+# Nettoyage Ratio Tabac
+varUniQuanti(cohorte$RITabac,
+             "Courbe de densité et quantiles du ratio de la pratique du Tabac",
+             "Variable Ratio Tabac")
+donnees_aberrantes_RITabac <- cohorte[cohorte$RITabac > 1, ]
+
+
+
+# Nettoyage Ratio Arboriculture
+varUniQuanti(cohorte$RIArb,
+             "Courbe de densité et quantiles du ratio de la pratique de l'Arboriculture",
+             "Variable Ratio Arboriculture")
+donnees_aberrantes_RIArb <- cohorte[cohorte$RIArb > 1, ]
+
+
+
+# Nettoyage Ratio Pomme de terre
+varUniQuanti(cohorte$RIPdt,
+             "Courbe de densité et quantiles du ratio de la pratique de la Pomme de Terre",
+             "Variable Ratio Pomme de Terre")
+donnees_aberrantes_RIPdt <- cohorte[cohorte$RIPdt > 1, ]
+
+
+
+# Nettoyage Ratio Légumes de plein champ
+varUniQuanti(cohorte$RILegChamp,
+             "Courbe de densité et quantiles du ratio de la pratique des Légumes de plein champ",
+             "Variable Ratio Légumes plein champ")
+donnees_aberrantes_RILegChamp <- cohorte[cohorte$RILegChamp > 1, ]
+
+
+
+# Nettoyage Ratio Serres
+varUniQuanti(cohorte$RISerres,
+             "Courbe de densité et quantiles du ratio de la pratique des Serres",
+             "Variable Ratio Serres")
+donnees_aberrantes_RISerres <- cohorte[cohorte$RISerres > 1, ]
+
+
+
+
+
+##########################################################"
+
+library(dplyr)
+library(gt)
+library(scales)
+
+# Variables quantitatives
+vars_quanti <- c("RIBov","RIMou","RICoc","RIChe","RIVol","RIPrai",
+                 "RIVigne","RIMais","RIBle","RIPois","RIBet","RITou",
+                 "RICol","RITabac","RIArb","RIPdt","RILegChamp","RISerres")
+
+# Fonction de résumé univarié
+resume_univarie <- function(data, vars) {
+  
+  resultat <- lapply(vars, function(v) {
+    
+    x <- data[[v]]
+    
+    Effectif <- sum(!is.na(x))
+    Nb_aberrantes <- sum(x > 1, na.rm = TRUE)
+    Pourcentage_aberrantes <- (Nb_aberrantes / Effectif) * 100
+    Pourcentage_non_nuls <- mean(x > 0, na.rm = TRUE) * 100
+    
+    data.frame(
+      Variable = v,
+      Effectif = Effectif,
+      Moyenne = mean(x, na.rm = TRUE),
+      Ecart_type = sd(x, na.rm = TRUE),
+      Mediane = median(x, na.rm = TRUE),
+      Min = min(x, na.rm = TRUE),
+      Max = max(x, na.rm = TRUE),
+      Non_nuls = Pourcentage_non_nuls,
+      Nb_aberrantes = Nb_aberrantes,
+      Pourcentage_aberrantes = Pourcentage_aberrantes
+    )
+  })
+  
+  bind_rows(resultat)
+}
+
+
+
+
+# Création du tableau
+table_univarie <- resume_univarie(cohorte, vars_quanti)
+
+labels_variables <- c(
+  RIBov = "Bovin",
+  RIMou = "Moutons / Chèvres",
+  RICoc = "Cochon",
+  RIChe = "Chevaux",
+  RIVol = "Volaille",
+  RIPrai = "Prairies",
+  RIVigne = "Vigne",
+  RIMais = "Maïs",
+  RIBle = "Blé",
+  RIPois = "Pois fourragers",
+  RIBet = "Betteraves sucrières",
+  RITou = "Tournesol",
+  RICol = "Colza",
+  RITabac = "Tabac",
+  RIArb = "Arboriculture",
+  RIPdt = "Pomme de terre",
+  RILegChamp = "Légumes plein champ",
+  RISerres = "Cultures sous serres"
+)
+
+table_univarie$Variable <- labels_variables[table_univarie$Variable]
+
+
+table_univarie %>%
+  mutate(
+    `Moyenne (Ecart_type)` = sprintf("%.4f (%.4f)", Moyenne, Ecart_type),
+    Non_nuls = round(Non_nuls, 1),
+    Pourcentage_aberrantes = round(Pourcentage_aberrantes, 2)
+  ) %>%
+  dplyr::select(
+    Variable,
+    Effectif,
+    Moyenne,
+    Ecart_type,
+    Mediane,
+    Min,
+    Max,
+    Non_nuls,
+    Nb_aberrantes,
+    Pourcentage_aberrantes
+  ) %>%
+  
+  gt() %>%
+  tab_header(
+    title = md("**Description univariée des variables quantitatives**"),
+    subtitle = md("Ratios de pratiques agricoles")
+  ) %>%
+  
+  cols_label(
+    Non_nuls = "% non nuls",
+    Pourcentage_aberrantes = "% aberrantes"
+  ) %>%
+  
+  fmt_number(
+    columns = c(Mediane, Min, Max),
+    decimals = 4
+  ) %>%
+  
+  data_color(
+    columns = c(Non_nuls, Pourcentage_aberrantes),
+    colors = col_numeric(
+      palette = c("#E8F5E9", "#FFCDD2"),
+      domain = NULL
+    )
+  ) %>%
+  
+  tab_source_note(
+    source_note = md(
+      "**Lecture du tableau :**  
+      *% non nuls* correspond à la proportion d’observations strictement supérieures à 0.  
+      *% aberrantes* correspond à la proportion de ratios strictement supérieurs à 1."
+    )
+  ) %>%
+  
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  
+  opt_table_outline() %>%
+  opt_all_caps()
+
+
+
+names(table_univarie)

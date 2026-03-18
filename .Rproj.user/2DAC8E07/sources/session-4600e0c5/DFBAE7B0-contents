@@ -1,0 +1,251 @@
+######################################################################
+# titre: Arbre de décision
+# Auteur: BINAZON GIOVANNI
+# Année Scolaire: 2025-2026
+######################################################################
+
+################### Importation Librairies #########################################
+
+install.packages("labelled")
+install.packages("rpart")
+install.packages("rattle")
+install.packages("pROc")
+install.packages("adabag")
+install.packages("ada")
+library(ada)
+library(adabag)
+library(pROC)
+library(rattle)
+library(rpart)
+library(labelled)
+library(dplyr)
+library(ggplot2)
+
+
+#################### Importation Datasets ###########################################
+readLines("credit.RDS")
+credit = readRDS("credit.RDS")
+
+colnames(credit)
+
+summary(credit)
+
+library(tidyverse)
+
+credit$Cible <- as.factor(credit$Cible)
+
+credit$Comptes <- as.factor(credit$Comptes)
+
+credit$Historique_credit <- as.factor(credit$Historique_credit)
+
+credit$Objet_credit <- as.factor(credit$Objet_credit)
+
+credit$Epargne <- as.factor(credit$Epargne)
+
+credit$Anciennete_emploi <- as.factor(credit$Anciennete_emploi)
+
+credit$Situation_familiale  <- as.factor(credit$Situation_familiale)
+
+credit$Garanties <- as.factor(credit$Garanties)
+
+credit$Statut_domicile <- as.factor(credit$Statut_domicile)
+
+credit$Autres_credits <- as.factor(credit$Autres_credits)
+
+credit$Biens <- as.factor(credit$Biens)
+
+credit$Type_emploi <- as.factor(credit$Type_emploi)
+
+credit$Telephone <- as.factor(credit$Telephone)
+
+
+
+
+
+
+
+var_label(credit$Comptes) <- "Soldes sur le Compte courant (euros)"
+
+var_label(credit$Duree_credit) <- " Durée du crédit (année)"
+
+var_label(credit$Montant_credit) <- "Montant du crédit (année)"
+
+var_label(credit$Age) <- "Ages (année)"
+
+var_label(credit$Taux_effort) <- " Taux d'endettement"
+
+var_label(credit$Anciennete_domicile) <- "Ancienneté Domicile "
+
+var_label(credit$Nb_credits) <- "Nb de crédits dans l' établissement"
+
+var_label(credit$Epargne) <- "Epargne détenue (euros)"
+
+var_label(credit$Anciennete_emploi) <- "Ancienneté à l'emploi (année)"
+
+var_label(credit$Situation_familiale) <- "Situation de Famille"
+
+var_label(credit$Nb_pers_charg) <- "Nb de personnes à charges"
+
+var_label(credit$Biens) <- "Bien détenus par le demandeurs"
+
+var_label(credit$Autres_credits) <- "Détention de crédits dans un établissement"
+
+var_label(credit$Type_emploi) <- "Type d'emploi"
+
+var_label(credit$Historique_credit) <- "Historique de paiement"
+
+var_label(credit$Objet_credit) <- "Objet du crédit"
+
+var_label(credit$Telephone) <- "Un numéro de télephone fourni ou non"
+
+var_label(credit$Garanties) <- "Présence d'une garantie ou d'un co-emprunteur"
+
+var_label(credit$Statut_domicile) <- "Statut du Logement"
+
+
+
+set.seed(123)
+n <- nrow(credit)
+
+indice <- sample(1:n, size = 0.8 * n)
+
+apprentissage <- credit[indice, ]
+
+test = credit[-indice,]
+
+
+
+####################### Arbre de Décision sur l'échantillon Apprentissage #####################################
+
+rpart(Cible ~ ., data=apprentissage)
+
+
+arbreCart2=rpart(Cible ~ ., data=apprentissage, method="class",control= rpart.control(maxdepth = 4, minsplit=60, minbucket=30))
+
+print(arbreCart2)
+
+plot(arbreCart2,branch=.2,uniform=TRUE,compress=TRUE,margin=.1)
+
+text(arbreCart2, fancy=FALSE, use.n=TRUE,pretty = 0, all=TRUE,cex=.6 )
+
+fancyRpartPlot(arbreCart2,main="Arbre de Decision sur le modèle apprentissage")
+
+
+####################### Arbre de Décision sur l'échantillon Test #####################################
+
+
+arbreCartTest=rpart(Cible ~ ., data=test)
+
+print(arbreCartTest)
+
+plot(arbreCartTest,branch=.2,uniform=TRUE,compress=TRUE,margin=.1)
+
+text(arbreCartTest, fancy=FALSE, use.n=TRUE,pretty = 0, all=TRUE,cex=.6 )
+
+fancyRpartPlot(arbreCart2,main="Arbre de Decision sur le modèle apprentissage")
+
+
+summary(arbreCart2)
+
+
+pred = predict(arbreCart2,newdata=test,type="prob")
+
+colnames(pred)
+
+pred_test_class= if_else(pred[,"1"]>0.5,1,0)
+
+conf_matrix= table(Actual= test$Cible, predicted=pred_test_class)
+
+taux_mal_classé= 1 -(sum(diag(conf_matrix)) / sum(conf_matrix))
+cat("Le Taux de mal classé sur le test est de: ",round(taux_mal_classé*100,2),"%\n")
+
+
+dataApp <- data.frame(y=apprentissage$Cible,
+                      previ= predict(arbreCart2, type="prob",apprentissage)[,2])
+
+
+roc_obj_app <- roc(dataApp$y,dataApp$previ)
+
+
+seuilAp<-as.numeric(coords(roc_obj_app,"best")[1])
+
+
+
+dataApp$prevQuali[dataApp$previ>seuilAp]<-1
+dataApp$prevQuali[dataApp$previ<=seuilAp]<-1
+confus.arbre.app<- table(dataApp$y,dataApp$prevQuali)
+arbre.txMalClass.app<-1-sum(diag(confus.arbre.app))/sum(confus.arbre.app)
+print(arbre.txMalClass.app)
+
+############################
+
+pred_test_class= if_else(pred[,"1"]>arbre.txMalClass.app,1,0)
+
+conf_matrix= table(Actual= test$Cible, predicted=pred_test_class)
+
+taux_mal_classé= 1 -(sum(diag(conf_matrix)) / sum(conf_matrix))
+cat("Le Taux de mal classé sur le test est de: ",round(taux_mal_classé*100,2),"%\n")
+
+
+
+
+##########################################################################################################################
+########################## PARTIE B: Boosting Algorithme adaboost M1
+##########################################################################################################################
+
+model <- boosting(Cible ~ ., data = apprentissage,
+                  boos = TRUE, mfinal = 1000)
+
+# Make predictions on the test set
+predictions <- predict(model, newdata = test)
+
+print(predictions$confusion)
+
+taux_mal_classé= 1 -(sum(diag(predictions$confusion)) / sum(predictions$confusion))
+cat("Le Taux de mal classé sur le test est de: ",round(taux_mal_classé*100,2),"%\n")
+
+
+
+dataApp <- data.frame(y=apprentissage$Cible,previ= predict(model, type="prob",apprentissage)[,2])
+
+roc_obj_app <- roc(dataApp$y,dataApp$previ)
+
+seuilAp<-as.numeric(coords(roc_obj_app,"best")[1])
+
+dataApp$prevQuali[dataApp$previ>seuilAp]<-1
+
+dataApp$prevQuali[dataApp$previ<=seuilAp]<-1
+
+confus.arbre.app<- table(dataApp$y,dataApp$prevQuali)
+
+arbre.txMalClass.app<-1-sum(diag(confus.arbre.app))/sum(confus.arbre.app)
+
+print(arbre.txMalClass.app)
+
+
+pred_test_class= if_else(pred[,"1"]>arbre.txMalClass.app,1,0)
+
+conf_matrix= table(Actual= test$Cible, predicted=pred_test_class)
+
+print(conf_matrix)
+
+taux_mal_classé= 1 -(sum(diag(conf_matrix)) / sum(conf_matrix))
+cat("Le Taux de mal classé sur le test est de: ",round(taux_mal_classé*100,2),"%\n")
+
+
+
+
+##########################################################################################################################
+########################## PARTIE C: Boosting Algorithme discrete adaboost
+##########################################################################################################################
+
+gdis<-ada(Cible~.,data=apprentissage,iter=500,rpart.control(cp=0))
+
+##add testing data set
+gdis=addtest(gdis,iris[teind,-5],iris[teind,5])
+##plot gdis
+plot(gdis,TRUE,TRUE)
+##variable selection plot
+varplot(gdis)
+##pairwise plot
+pairs(gdis,iris[trind,-5],maxvar=2)

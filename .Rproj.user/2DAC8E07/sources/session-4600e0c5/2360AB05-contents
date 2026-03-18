@@ -1,0 +1,60 @@
+
+dataHeart=readRDS("DATA/Heart.RDS")
+
+n <- nrow(dataHeart)
+n
+ind_apprentissage <- sample(1:n, size = 0.8 * n)
+
+dataHeart_apprentissage <- dataHeart[ind_apprentissage, ]
+
+dataHeart_test = dataHeart[-ind_apprentissage,]
+
+regress=glm(has_heart_disease~.,data=dataHeart_apprentissage)
+summary(regress)
+
+pred = predict(regress,newdata=dataHeart_test)
+
+mean((dataHeart_test$has_heart_disease - pred)^2)
+
+
+
+install.packages("gbm")
+library(gbm)
+
+gbm_models<-gbm(
+  formula = has_heart_disease~.,
+  distribution = "gaussian",
+  data = dataHeart_apprentissage,
+  var.monotone = NULL,
+  n.trees = 500,
+  interaction.depth = 4,
+  n.minobsinnode = 10,
+  shrinkage = 0.1,
+  bag.fraction = 0.5,
+  train.fraction = 1,
+  cv.folds = 0,
+  keep.data = TRUE,
+  verbose = FALSE,
+  class.stratify.cv = NULL,
+  n.cores = NULL
+) 
+
+
+pred = predict(gbm_models,newdata=dataHeart_test)
+mean((dataHeart_test$has_heart_disease - pred)^2)
+
+
+
+#Importation et Utilisation de Bagging :
+install.packages("ipred")
+library(ipred)
+
+bag <- bagging(
+  formula = has_heart_disease~.,
+  data = dataHeart_apprentissage,
+  nbagg = 100,   
+  coob = TRUE
+)
+
+pred = predict(bag,newdata=dataHeart_test)
+mean((dataHeart_test$has_heart_disease - pred)^2)

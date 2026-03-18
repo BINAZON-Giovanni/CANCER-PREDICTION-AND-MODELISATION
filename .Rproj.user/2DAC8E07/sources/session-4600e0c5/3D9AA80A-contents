@@ -1,0 +1,303 @@
+#######################################################################
+###### NOUVEAU TP DE APPRENTISSAGE STATISTIQUE POUR L'IA
+#######################################################################
+
+
+######################################################################
+# titre: Appurement et traitement des données 
+# Auteur: BINAZON GIOVANNI
+# Année Scolaire: 2025-2026
+######################################################################
+
+
+############# Phase d'importation des librairies ####################
+library(dplyr)
+library (gtsummary)
+library(gt)
+library(tibble)
+install.packages("readxl")
+library(readxl)
+install.packages("ggplot2")
+library(ggplot2)
+
+
+########## Phase d'importation des données ##########################
+
+donnees <- read_excel("DONNEE/naissanceExo1.xls", sheet = 1, col_names = TRUE, na = c("", "NA"))
+
+summary(donnees$Age)
+
+
+
+################################ ANALYSE EXPLORATOIRE SUR LA VARIABLE AGE #########################################
+
+# Représentation graphique de la densité de la variable Age 
+ggplot(donnees, aes(x = Age)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Courbe de densité de la variable age",
+       x = "Variable Age",
+       y = "Densité") +
+  theme_minimal()
+
+
+# Représentation graphique de dispersion (plot) de la variable Age 
+plot(donnees$Age,
+     main = "diagramme de dispersion" ,
+     xlab = "Repartition de la population", 
+     ylab = "Represéntation des Ages")
+
+
+# Calcul des quantiles allant de 1% à 99% avec pas de 1
+QuantilesAge=quantile(donnees$Age, probs = seq(0, 1, 1/100))
+print(QuantilesAge)
+
+
+#Jumule des 02 fonctions précédentes:
+ggplot(donnees, aes(x = Age)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_vline(xintercept = QuantilesAge, color = "red", alpha = 0.2) +
+  labs(title = "Courbe de densité et quantiles de la variable age",
+       x = "Variable Age",
+       y = "Densité") +
+  theme_minimal()
+
+
+varUniQuanti <- function(variable, titreGraph, titreX) {
+  
+  dens <- density(variable)
+
+  plot(dens,
+       main = titreGraph,
+       xlab = titreX)
+  
+  q <- quantile(variable, probs = seq(0.01, 0.99, by = 0.01))
+  return(q)
+}
+
+
+varUniQuanti(donnees$Age,"Courbe de densité et quantiles de la variables Age","Variable Age")
+
+
+donnees_aberrantes_age <- donnees[donnees$Age < 16 | donnees$Age > 50, ]
+
+
+
+
+
+################################ ANALYSE EXPLORATOIRE SUR LA VARIABLE POIDS DE LA MERE #########################################
+
+# Représentation graphique de la densité de la variable Age 
+ggplot(donnees, aes(x = poidsMere)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Courbe de densité du Poids de la mère",
+       x = "Variable Mère",
+       y = "Densité") +
+  theme_minimal()
+ 
+
+# Représentation graphique de dispersion (plot) de la variable Poids de la mère 
+plot(donnees$poidsMere,
+     main = "diagramme de dispersion" ,
+     xlab = "Repartition de la population", 
+     ylab = "Repartitions des Poids de la mère")
+
+
+# Calcul des quantiles allant de 1% à 99% avec pas de 1
+QuantilespoidsMere=quantile(donnees$poidsMere, probs = seq(0, 1, 1/100))
+print(QuantilespoidsMere)
+
+#Jumule des 02 fonctions précédentes:
+ggplot(donnees, aes(x = poidsMere)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_vline(xintercept = QuantilespoidsMere, color = "red", alpha = 0.2) +
+  labs(title = "Courbe de densité et quantiles de la variable Poids de la mère",
+       x = "Variable Poids de la mère",
+       y = "Densité") +
+  theme_minimal()
+
+
+
+
+varUniQuanti(donnees$poidsMere,"Courbe de densité et quantiles de la variables PoidsMere","Variable PoidsMere")
+
+
+donnees_aberrantes_poidsMere <- donnees[donnees$poidsMere < 50, ]
+
+
+
+
+
+################################ ANALYSE EXPLORATOIRE SUR LA VARIABLE POIDS DE L'enfant  #########################################
+
+# Représentation graphique de la densité de la variable Enfant
+
+ggplot(donnees, aes(x = poidsEnfant)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Courbe de densité du Poids de l'enfant",
+       x = "Poids de l'enfant",
+       y = "Densité") +
+  theme_minimal()
+
+
+# Représentation graphique de dispersion (plot) de la variable Poids de l'enfant  
+plot(donnees$poidsEnfant,main = "diagramme de dispersion" ,xlab = "Repartition de la population", ylab = "Repartitions des Poids de l'enfant")
+
+
+# Calcul des quantiles allant de 1% à 99% avec pas de 1
+QuantilespoidsEnfant=quantile(donnees$poidsEnfant, probs = seq(0, 1, 1/100))
+print(QuantilespoidsEnfant)
+
+#Jumule des 02 fonctions précédentes:
+ggplot(donnees, aes(x = poidsEnfant)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_vline(xintercept = QuantilespoidsEnfant, color = "red", alpha = 0.2) +
+  labs(title = "Courbe de densité et quantiles de la variable Poids de l'enfant",
+       x = "Variable poidsEnfant",
+       y = "Densité") +
+  theme_minimal()
+
+
+
+
+varUniQuanti(donnees$poidsEnfant,"Courbe de densité et quantiles de la variables poidsEnfant","Variable poidsEnfant")
+
+
+donnees_aberrantes_poidsEnfant <- donnees[donnees$poidsEnfant < 0.8 | donnees$poidsEnfant > 11, ]
+
+
+
+
+
+
+
+
+
+################################ ANALYSE EXPLORATOIRE SUR LA VARIABLE Gestation  #########################################
+
+# Représentation graphique de la densité de la variable Gestation
+
+ggplot(donnees, aes(x = Gestation)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  labs(title = "Courbe de densité de Gestation",
+       x = "Durée de la Gestation",
+       y = "Densité") +
+  theme_minimal()
+
+
+# Représentation graphique de dispersion (plot) de la variable Poids de l'enfant  
+plot(donnees$Gestation,main = "diagramme de dispersion" ,xlab = "Repartition de la population", ylab = "Repartitions du temps de la gestation")
+
+
+# Calcul des quantiles allant de 1% à 99% avec pas de 1
+QuantilesGestation=quantile(donnees$Gestation, probs = seq(0, 1, 1/100))
+print(QuantilespoidsEnfant)
+
+#Jumule des 02 fonctions précédentes:
+ggplot(donnees, aes(x = Gestation)) +
+  geom_density(fill = "blue", alpha = 0.5) +
+  geom_vline(xintercept = QuantilesGestation, color = "red", alpha = 0.2) +
+  labs(title = "Courbe de densité et quantiles de la variable Gestation",
+       x = "Variable temps de Gestation",
+       y = "Densité") +
+  theme_minimal()
+
+
+
+
+varUniQuanti(donnees$Gestation,"Courbe de densité et quantiles de la variables temps de Gestation","Variable Gestation")
+
+donnees_aberrantes_Gestation <- donnees[donnees$Gestation < 33 | donnees$Gestation > 45, ]
+
+
+
+
+
+################################ ANALYSE EXPLORATOIRE QUALITATIVE SUR LA VARIABLE Fumeur  #########################################
+
+table_Fumeur<-table(donnees$fumeur)
+
+#proportion
+prop.table(table_Fumeur)
+
+#Barplot
+barplot(table_Fumeur, main="Répartition de la variable Fumeur", 
+        xlab="Nombre par modalité",
+        col="orange")
+
+donnees_aberrantes_Fumeur <- donnees[donnees$fumeur=="2" | donnees$fumeur=="4",  ]
+
+
+
+
+
+# ==================================================== #
+# ---- Analyse bivariée : Gestation vs poidsEnfant ----
+# ==================================================== #
+
+# Nuage de points
+ggplot(donnees, aes(x = Gestation, y = poidsEnfant)) +
+  geom_point(colour = "blue", size = 2) +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        legend.position = "bottom") +
+  labs(title = "Nuage de dispersion : Gestation vs poidsEnfant",
+       x = "Variable Gestation",
+       y = "Variable PoidsENfants",
+       caption = "BUT Science des Données - Lisieux")
+
+
+# ==================================================== #
+# ---- Analyse bivariée : Age vs Gestation ----
+# ==================================================== #
+
+# Nuage de points
+ggplot(donnees, aes(x = Age , y = Gestation)) +
+  geom_point(colour = "blue", size = 2) +
+  theme_bw() +
+  theme(panel.border = element_blank(),
+        legend.position = "bottom") +
+  labs(title = "Nuage de dispersion : Gestation vs poidsEnfant",
+       x = "Variable Age",
+       y = "Variable Gestation",
+       caption = "BUT Science des Données - Lisieux")
+
+
+
+
+
+# ==================================================== #
+# ---- Analyse Multivarié : ACP ----
+# ==================================================== #
+donnees$fumeur<- as.factor(donnees$fumeur)
+str(donnees)
+acp_dataset= donnees%>%select(poidsEnfant,Age,poidsMere,Gestation)
+
+install.packages("FactoMineR")
+library(FactoMineR)
+library(factoextra)   # pour les graphiques (optionnel mais très utile)
+
+res_pca <- PCA(acp_dataset, scale.unit = TRUE, ncp = 4, graph = FALSE)
+
+res_pca$eig  #En règle général, on garde les composantes qui expliquent au moins 70 % de l’inertie cumulée.
+
+# Analyser la distribution des composantes
+coord <- res_pca$ind$coord
+head(coord)
+par(mfrow = c(1,2))
+hist(coord[,1], main = "Distribution de la composante 1", xlab = "Dim 1")
+hist(coord[,2], main = "Distribution de la composante 2", xlab = "Dim 2")
+hist(coord[,3], main = "Distribution de la composante 3", xlab = "Dim 3")
+hist(coord[,4], main = "Distribution de la composante 4", xlab = "Dim 4")
+par(mfrow = c(1,1))
+
+#Identifier les valeurs atypiques 
+
+z1 <- scale(coord[,1])
+z2 <- scale(coord[,2])
+
+ind_atypiques <- (abs(z1) > 3) | (abs(z2) > 3)
+
+donnees_atypiques_acp <- donnees[ind_atypiques, ]
+donnees_atypiques_acp
+
+

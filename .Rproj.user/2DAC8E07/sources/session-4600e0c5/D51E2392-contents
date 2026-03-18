@@ -1,0 +1,155 @@
+run_clustering <- function(train, vars, k = 3) {
+  
+  data_scaled <- scale(train[, vars])
+  
+  km <- kmeans(data_scaled, centers = k, nstart = 20)
+  
+  train$cluster <- km$cluster
+  
+  return(list(train = train, model = km, k = k))
+}
+
+
+run_logistic_by_cluster <- function(train, cible, vars) {
+  
+  clusters <- unique(train$cluster)
+  models <- list()
+  
+  for (cl in clusters) {
+    data_cl <- train[train$cluster == cl, ]
+    
+    formule <- as.formula(paste(cible, "~", paste(vars, collapse = "+")))
+    
+    models[[as.character(cl)]] <- glm(formule, data = data_cl, family = binomial)
+  }
+  
+  return(models)
+}
+
+choose_k_2_7 <- function(train, vars) {
+  
+  set.seed(123)
+  idx <- sample(1:nrow(train), size = 0.2*nrow(train))
+  
+  train_main <- train[-idx, ]
+  valid      <- train[idx, ]
+  
+  train_scaled <- scale(train_main[, vars])
+  valid_scaled <- scale(valid[, vars],
+                        center = attr(train_scaled, "scaled:center"),
+                        scale  = attr(train_scaled, "scaled:scale"))
+  
+  ks <- 2:7
+  errors <- numeric(length(ks))
+  
+  for (i in seq_along(ks)) {
+    k <- ks[i]
+    pred <- FNN::knn(train_scaled, valid_scaled, cl = train_main$cluster, k = k)
+    errors[i] <- mean(pred != valid$cluster)
+  }
+  
+  best_k <- ks[which.min(errors)]
+  return(best_k)
+}
+
+
+assign_clusters_knn <- function(train, test, vars) {
+  
+  k <- choose_k_2_7(train, vars)
+  message("k optimal choisi = ", k)
+  
+  train_scaled <- scale(train[, vars])
+  test_scaled  <- scale(test[, vars],
+                        center = attr(train_scaled, "scaled:center"),
+                        scale  = attr(train_scaled, "scaled:scale"))
+  
+  pred_clusters <- tryCatch({
+    FNN::knn(train_scaled, test_scaled, cl = train$cluster, k = k)
+  }, error = function(e) {
+    message("⚠️ KNN a échoué → cluster 1 assigné à tout le test")
+    rep(1, nrow(test))
+  })
+  
+  test$cluster <- as.numeric(pred_clusters)
+  return(test)
+}
+
+predict_by_cluster <- function(test, models, cible) {
+  
+  preds <- numeric(nrow(test))
+  
+  for (i in 1:nrow(test)) {
+    cl <- as.character(test$cluster[i])
+    
+    if (!cl %in% names(models)) cl <- names(models)[1]
+    
+    mod <- models[[cl]]
+    prob <- predict(mod, newdata = test[i, ], type = "response")
+    preds[i] <- ifelse(prob > 0.5, 1, 0)
+  }
+  
+  return(preds)
+}
+
+
+run_preclassification <- function(train, test, cible, vars, k_clusters = 3) {
+  
+  # 1. Clustering du train
+  clust <- run_clustering(train, vars, k = k_clusters)
+  train <- clust$train
+  
+  # 2. Modèles logistiques par cluster
+  models <- run_logistic_by_cluster(train, cible, vars)
+  
+  # 3. Affectation des clusters au test
+  test <- assign_clusters_knn(train, test, vars)
+  
+  # 4. Prédiction
+  preds <- predict_by_cluster(test, models, cible)
+  
+  return(preds)
+}
+
+run_preclassification_all <- function(data, cible, vars, n = 40) {
+  
+  splits <- create_splits(data, cible, n)
+  
+  results <- data.frame(
+    iteration = 1:n,
+    sens = NA,
+    spec = NA
+  )
+  
+  for (i in 1:n) {
+    message("---- Iteration ", i, " ----")
+    
+    train <- splits[[i]]$train
+    test  <- splits[[i]]$test
+    
+    preds <- run_preclassification(train, test, cible, vars)
+    
+   
+    
+    results$sens[i] <- m$sens
+    results$spec[i] <- m$spec
+  }
+  
+  return(results)
+}
+
+resultats_preclass <- run_preclassification_all(dataset, "cible", vars_robustes, n = 40)
+
+library(tidyverse)
+
+resultats_preclass_long <- resultats_preclass %>%
+  pivot_longer(cols = c("sens", "spec"),
+               names_to = "metrique",
+               values_to = "valeur")
+
+ggplot(resultats_preclass_long,
+       aes(x = metrique, y = valeur, fill = metrique)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Pré-classification : Sensibilité et Spécificité",
+       x = "Métrique",
+       y = "Valeur") +
+  theme_minimal()
